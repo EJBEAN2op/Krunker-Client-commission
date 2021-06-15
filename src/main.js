@@ -2,7 +2,7 @@
 /*
 *   v1.0.2
 */
-const { app, BrowserWindow, screen, clipboard, dialog } = require('electron');
+const { app, BrowserWindow, screen, clipboard, dialog, ipcMain, shell } = require('electron');
 const path = require('path');
 const krunkerurl = 'https://krunker.io/';
 const Store = require('electron-store');
@@ -10,6 +10,7 @@ const store = new Store();
 const shortcuts = require('electron-localshortcut');
 const { evalURL } = require('./utils');
 const { autoUpdate } = require('./utils/autoUpdate');
+const { initSwapper, attachSwapper } = require('./utils/swapper');
 
 // modifying chromium
 app.commandLine.appendSwitch('disable-frame-rate-limit');
@@ -41,7 +42,7 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 let game = null;
 let splash = null;
-let social = null;
+const social = null;
 let internetConnection = true;
 let errText;
 // functions
@@ -110,7 +111,9 @@ function createGameWindow(url, webContents) {
         height: height,
         center: true,
         show: false,
+        title: 'Mentos Client',
         autoHideMenuBar: true,
+        icon: path.join(__dirname, 'assets/icons/png/icon.png'),
         webPreferences: {
             preload: `${__dirname}/preload/preload.js`,
             contextIsolation: false,
@@ -124,24 +127,57 @@ function createGameWindow(url, webContents) {
             errText = `${err}`;
         });
     }
+    const swapper = initSwapper(app);
+    attachSwapper(game, swapper);
     return game;
 }
 
-function createWindow(url, webContents) {
-    const { width, height } = screen.getPrimaryDisplay().workArea;
-    social = new BrowserWindow({
-        width: width,
-        height: height,
+// function createWindow(event, url, webContents) {
+//     if (!url) return;
+//     const uri = evalURL(url);
+//     if (uri != 'social') {
+//         event.preventDefault();
+//         shell.openExternal(url);
+//     } else {
+//         event.preventDefault();
+//         const { width, height } = screen.getPrimaryDisplay().workArea;
+//         social = new BrowserWindow({
+//             width: width,
+//             height: height,
+//             center: true,
+//             show: false,
+//             webPreferences: {
+//                 preload: path.join(__dirname, 'preload.js'),
+//                 contextIsolation: false,
+//             }
+//         });
+//         if (!webContents) social.loadURL(url);
+//         return social;
+//     }
+// }
+
+function createPromptWindow(message, defaultValue, config = null) {
+    const prompt = new BrowserWindow({
+        width: 480,
+        height: 240,
         center: true,
-        show: false,
+        show: true,
+        frame: false,
+        resizable: false,
+        transparent: true,
         webPreferences: {
-            preload: path.join(__dirname, 'preload.js'),
-            contextIsolation: false,
+            preload: `${__dirname}/preload/prompt.js`
         }
     });
-    if (!webContents) social.loadURL(url);
-    return social;
+    const contents = prompt.webContents;
+
+    prompt.once('ready-to-show', () => contents.send('prompt-data', message, defaultValue));
+
+    prompt.loadFile('src/html/prompt.html');
+
+    return prompt;
 }
+
 
 /**
  * Main function, splash window + game window
@@ -150,6 +186,7 @@ function createWindow(url, webContents) {
  */
 
 function initClient() { // splash and game
+    load();
     createSplashWindow();
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
     autoUpdate(splash.webContents, splash).finally(() => {
@@ -171,11 +208,36 @@ function initClient() { // splash and game
  * functions end
  * main events
  */
-app.whenReady().then(() => initClient());
+app.whenReady().then(() => {
+    initClient();
+});
 
 app.on('quit', () => app.quit());
 
 app.on('window-all-closed', () => {
     if (process.platform != 'darwin') app.quit();
 });
+
+function load() {
+    ipcMain.handle('get-app-info', () => ({
+        name: app.name,
+        version: app.getVersion(),
+        documentsDir: app.getPath('documents')
+    }));
+
+    ipcMain.on('get-path', (event, name) => (event.returnValue = app.getPath(name)));
+
+    ipcMain.on('prompt', (event, message, defaultValue) => {
+        const promptWin = createPromptWindow(message, defaultValue);
+        let returnValue = null;
+
+        ipcMain.on('prompt-return', (_, value) => (returnValue = value));
+
+        promptWin.on('closed', () => (event.returnValue = returnValue));
+    });
+
+    ipcMain.handle('set-bounds', (event, bounds) => BrowserWindow
+        .fromWebContents(event.sender)
+        .setBounds(bounds));
+}
 
