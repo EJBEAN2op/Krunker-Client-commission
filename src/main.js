@@ -2,7 +2,7 @@
 /*
 *   v1.0.2
 */
-const { app, BrowserWindow, screen, clipboard, dialog, ipcMain, shell } = require('electron');
+const { app, BrowserWindow, screen, clipboard, dialog, ipcMain, shell, globalShortcut } = require('electron');
 const path = require('path');
 const krunkerurl = 'https://krunker.io/';
 const Store = require('electron-store');
@@ -57,19 +57,20 @@ function createShortcutKeys() {
     const clipboardURL = clipboard.readText();
     const type = evalURL(clipboardURL);
     shortcuts.register(game, 'Escape', () => contents.executeJavaScript('document.exitPointerLock()', true));
-    shortcuts.register(game, 'F5', () => contents.reload()); // reload page
-    shortcuts.register(game, 'Shift+F5', () => contents.reloadIgnoringCache());
-    shortcuts.register(game, 'F11', () => game.isFullScreen() ? game.setFullScreen(false) : game.setFullScreen(true)); // toggle fullscreen
+    globalShortcut.register('F5', () => contents.reload()); // reload page
+    globalShortcut.register('Shift+F5', () => contents.reloadIgnoringCache());
+    // shortcuts.register();
     //     if (!game.isFullScreen()) game.setFullScreen(true);
     //     else game.setFullScreen(false);
     // });
-    shortcuts.register(game, 'F2', () => clipboard.writeText(contents.getURL())); // copy URL to clipboard
-    shortcuts.register(game, 'F6', () => { // reload client
+    globalShortcut.register('F2', () => clipboard.writeText(contents.getURL())); // copy URL to clipboard
+    globalShortcut.register('F6', () => { // reload client
         app.quit();
-        createGameWindow('https://krunker.io/');
+        createGameWindow('https://krunker.io/').show();
     });
-    shortcuts.register(game, 'CommandOrControl+Shift+N', () => createGameWindow(contents.getURL()));
-    shortcuts.register(game, 'F12', () => contents.toggleDevTools());
+    globalShortcut.register('F11', () => game.setSimpleFullScreen(!game.isSimpleFullScreen()));
+    globalShortcut.register('CommandOrControl+Shift+N', () => createGameWindow(contents.getURL()));
+    globalShortcut.register('F12', () => contents.toggleDevTools());
     return game;
 }
 
@@ -118,8 +119,12 @@ function createGameWindow(url, webContents) {
         webPreferences: {
             preload: `${__dirname}/preload/preload.js`,
             contextIsolation: false,
+            nodeIntegration: false,
+            webSecurity: false,
+            allowRunningInsecureContent: true
         }
     });
+    game.webContents.on('new-window', initNewWin);
     const contents = game.webContents;
     createShortcutKeys();
     if (!webContents) {
@@ -243,3 +248,40 @@ function load() {
         .setBounds(bounds));
 }
 
+function initNewWin(event, url, frameName, disposition, options) {
+    if (!url) return;
+    if (!isSocial(url)) {
+        event.preventDefault();
+        shell.openExternal(url);
+        // eslint-disable-next-line no-useless-return
+        return;
+    } else {
+        event.preventDefault();
+        const { width, height } = screen.getPrimaryDisplay().workArea;
+        const newWin = new BrowserWindow({
+            width: width,
+            height: height,
+            webContents: options.webContents,
+            icon: path.join(__dirname, 'assets/icons/png/icon.png'),
+            show: false,
+            backgroundColor: '#131313',
+            webPreferences: {
+                nodeIntergration: false,
+                webSecurity: false,
+                devTools: true,
+            },
+        });
+
+        if (!options.webContents) {
+            newWin.loadURL(url);
+            newWin.webContents.once('dom-ready', () => setTimeout(() => newWin.show(), 600));
+        }
+        event.newGuest = newWin;
+        newWin.removeMenu();
+        newWin.webContents.on('new-window', initNewWin);
+    }
+}
+
+function isSocial(rawUrl) {
+    return new URL(rawUrl).pathname == '/social.html' ? true : false;
+}
