@@ -86,6 +86,7 @@ function createSplashWindow() {
         resizable: false,
         frame: false,
         transparent: true,
+        icon: path.join(__dirname, 'assets/icons/png/icon.png'),
         alwaysOnTop: true,
         webPreferences: {
             preload: `${__dirname}/preload/splash.js`,
@@ -164,6 +165,7 @@ function createPromptWindow(message, defaultValue, config = null) {
         show: true,
         frame: false,
         resizable: false,
+        icon: path.join(__dirname, 'assets/icons/png/icon.png'),
         transparent: true,
         webPreferences: {
             preload: `${__dirname}/preload/prompt.js`

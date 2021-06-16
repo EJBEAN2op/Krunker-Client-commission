@@ -1,6 +1,9 @@
+const Store = require('electron-store');
+const store = new Store();
+
 const sky = () => {
     Object.defineProperty(Object.prototype, 'skyC', {
-        value: '#000000', // your color goes here
+        value: store.get('sky-color'), // your color goes here
         writable: false,
         configurable: true
     });
