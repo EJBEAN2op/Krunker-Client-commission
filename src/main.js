@@ -44,7 +44,6 @@ if (!app.requestSingleInstanceLock()) app.quit();
 
 let game = null;
 let splash = null;
-const social = null;
 let internetConnection = true;
 let errText;
 // functions
