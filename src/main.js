@@ -2,18 +2,20 @@
 /*
 *   v1.0.2
 */
-const { app, BrowserWindow, screen, clipboard, dialog, ipcMain, shell, globalShortcut } = require('electron');
+const { app, BrowserWindow, screen, clipboard, dialog, ipcMain, shell, globalShortcut, session } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const krunkerurl = 'https://krunker.io/';
 const Store = require('electron-store');
+const URL = require('url');
 const store = new Store();
 const shortcuts = require('electron-localshortcut');
 const { evalURL } = require('./utils');
 const { autoUpdate } = require('./utils/autoUpdate');
-const { initSwapper, attachSwapper } = require('./utils/swapper');
 
 // modifying chromium
 app.commandLine.appendSwitch('disable-frame-rate-limit');
+app.commandLine.appendSwitch('disable-gpu-vsync');
 app.commandLine.appendSwitch('ignore-gpu-blacklist');
 app.commandLine.appendSwitch('disable-breakpad');
 app.commandLine.appendSwitch('disable-component-update');
@@ -64,10 +66,7 @@ function createShortcutKeys() {
     //     else game.setFullScreen(false);
     // });
     globalShortcut.register('F2', () => clipboard.writeText(contents.getURL())); // copy URL to clipboard
-    globalShortcut.register('F6', () => { // reload client
-        app.quit();
-        createGameWindow('https://krunker.io/').show();
-    });
+    shortcuts.register(game, 'F4', () => game.loadURL(krunkerurl));
     globalShortcut.register('F11', () => game.setSimpleFullScreen(!game.isSimpleFullScreen()));
     globalShortcut.register('CommandOrControl+Shift+N', () => createGameWindow(contents.getURL()));
     globalShortcut.register('F12', () => contents.toggleDevTools());
@@ -118,10 +117,6 @@ function createGameWindow(url, webContents) {
         icon: path.join(__dirname, 'assets/icons/png/icon.png'),
         webPreferences: {
             preload: `${__dirname}/preload/preload.js`,
-            contextIsolation: false,
-            nodeIntegration: false,
-            webSecurity: false,
-            allowRunningInsecureContent: true
         }
     });
     game.webContents.on('new-window', initNewWin);
@@ -133,36 +128,11 @@ function createGameWindow(url, webContents) {
             errText = `${err}`;
         });
     }
-    const swapper = initSwapper(app);
-    attachSwapper(game, swapper);
     return game;
 }
 
-// function createWindow(event, url, webContents) {
-//     if (!url) return;
-//     const uri = evalURL(url);
-//     if (uri != 'social') {
-//         event.preventDefault();
-//         shell.openExternal(url);
-//     } else {
-//         event.preventDefault();
-//         const { width, height } = screen.getPrimaryDisplay().workArea;
-//         social = new BrowserWindow({
-//             width: width,
-//             height: height,
-//             center: true,
-//             show: false,
-//             webPreferences: {
-//                 preload: path.join(__dirname, 'preload.js'),
-//                 contextIsolation: false,
-//             }
-//         });
-//         if (!webContents) social.loadURL(url);
-//         return social;
-//     }
-// }
 
-function createPromptWindow(message, defaultValue, config = null) {
+function createPromptWindow(message, defaultValue) {
     const prompt = new BrowserWindow({
         width: 480,
         height: 240,
@@ -209,6 +179,7 @@ function initClient() { // splash and game
             game.show();
         });
     });
+    initResourceSwapper();
 }
 
 /**
@@ -285,3 +256,37 @@ function initNewWin(event, url, frameName, disposition, options) {
 function isSocial(rawUrl) {
     return new URL(rawUrl).pathname == '/social.html' ? true : false;
 }
+
+function initResourceSwapper() {
+    // Resource Swapper
+    const SWAP_FOLDER = path.join(app.getPath('documents'), '/KrunkerResourceSwapper');
+    // eslint-disable-next-line no-empty
+    try { fs.mkdir(SWAP_FOLDER, { recursive: true }, e => {}); } catch (e) {}
+    const swap = { filter: { urls: [] }, files: {} };
+    const allFilesSync = (dir, fileList = []) => {
+        fs.readdirSync(dir).forEach(file => {
+            const filePath = path.join(dir, file);
+            const useAssets = !(/KrunkerResourceSwapper\\(css|docs|img|libs|pkg|sound)/.test(dir));
+            if (fs.statSync(filePath).isDirectory()) allFilesSync(filePath);
+            else {
+                const krunk = '*://' + (useAssets ? 'assets.' : '') + 'krunker.io' + filePath.replace(SWAP_FOLDER, '').replace(/\\/g, '/') + '*';
+                swap.filter.urls.push(krunk);
+                swap.files[krunk.replace(/\*/g, '')] = URL.format({
+                    pathname: filePath,
+                    protocol: 'file:',
+                    slashes: true
+                });
+            }
+        });
+    };
+    allFilesSync(SWAP_FOLDER);
+    if (swap.filter.urls.length) {
+        session.defaultSession.webRequest.onBeforeRequest(swap.filter, (details, callback) => {
+            const redirect = swap.files[details.url.replace(/https|http|(\?.*)|(#.*)/gi, '')] || details.url;
+            callback({ cancel: false, redirectURL: redirect });
+            // log.debug('Redirecting ', details.url, 'to', redirect);
+            // console.log('onBeforeRequest details', details);
+        });
+    }
+}
+

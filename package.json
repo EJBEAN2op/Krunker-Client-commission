@@ -17,7 +17,7 @@
   "author": "EJ BEAN",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^13.0.1",
+    "electron": "^7.0.0",
     "electron-builder": "^22.10.4"
   },
   "dependencies": {
