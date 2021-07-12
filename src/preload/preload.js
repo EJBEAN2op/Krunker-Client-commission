@@ -3,12 +3,14 @@ const Store = require('electron-store');
 const store = new Store();
 const { runScript } = require('../utils/runScript');
 const { ipcRenderer } = require('electron');
+const parseSettings = require('../utils/parseSettings');
 window.addEventListener('DOMContentLoaded', () => {
     // window.prompt = (message, defaultValue) => ipcRenderer.sendSync('prompt', message, defaultValue);
     const err = document.getElementById('err');
     ipcRenderer.on('errURL', (event, messageText = '') => {
         if (messageText != null) err.innerText = messageText;
     });
+    parseSettings();
     const scripts = ['sky', 'menuTimer'];
     for (const script of scripts) runScript(script);
     document.getElementById('customizeButton').addEventListener('click', generateSkySelector);
@@ -51,27 +53,27 @@ function skyInputVal() {
     console.log(`set store value ${val}`);
 }
 
-window.prompt = () => { // import settings fix
-    let tempHTML = '<div class="setHed">Import Settings</div>';
-    tempHTML +=
-        '<div class="settName" id="importSettings_div" style="display:block">Settings String<input type="url" placeholder="Paste Settings String Here" name="url" class="inputGrey2" id="settingString"></div>';
-    tempHTML += '<a class="+" id="importBtn">Import</a>';
-    menuWindow.innerHTML = tempHTML;
-    importBtn.addEventListener('click',
-        () => { parseSettings(settingString.value); });
+// window.prompt = () => { // import settings fix
+//     let tempHTML = '<div class="setHed">Import Settings</div>';
+//     tempHTML +=
+//         '<div class="settName" id="importSettings_div" style="display:block">Settings String<input type="url" placeholder="Paste Settings String Here" name="url" class="inputGrey2" id="settingString"></div>';
+//     tempHTML += '<a class="+" id="importBtn">Import</a>';
+//     menuWindow.innerHTML = tempHTML;
+//     importBtn.addEventListener('click',
+//         () => { parseSettings(settingString.value); });
 
-    function parseSettings(string) {
-        if (string && string != '') {
-            try {
-                const json = JSON.parse(string);
-                for (const setting in json) {
-                    setSetting(setting, json[setting]);
-                    showWindow(1);
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Error importing settings.');
-            }
-        }
-    }
-};
+//     function parseSettings(string) {
+//         if (string && string != '') {
+//             try {
+//                 const json = JSON.parse(string);
+//                 for (const setting in json) {
+//                     setSetting(setting, json[setting]);
+//                     showWindow(1);
+//                 }
+//             } catch (err) {
+//                 console.error(err);
+//                 alert('Error importing settings.');
+//             }
+//         }
+//     }
+// };
