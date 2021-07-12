@@ -16,7 +16,7 @@ async function autoUpdate(contents, win) {
             wait(2000).then(() => autoUpdater.checkForUpdates());
             autoUpdater.on('error', err => {
                 console.error(err);
-                contents.send('message', 'Auto update failed', err);
+                contents.send('message', 'Auto update failed', '');
                 wait(4000).then(() => reject(`Error: ${err}`));
             });
             autoUpdater.on('checking-for-update', () => {
