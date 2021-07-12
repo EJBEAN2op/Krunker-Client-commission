@@ -1,11 +1,11 @@
 {
   "name": "mentos-client",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "A krunker client.",
   "main": "./src/main.js",
   "repository": {
     "type": "git",
-    "url": "https://github.com/BunkerBots/Krunker-Client"
+    "url": "https://github.com/EJBEAN2op/Mentos-Client"
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
@@ -17,7 +17,7 @@
   "author": "EJ BEAN",
   "license": "ISC",
   "devDependencies": {
-    "electron": "^7.0.0",
+    "electron": "^8.5.1",
     "electron-builder": "^22.10.4"
   },
   "dependencies": {

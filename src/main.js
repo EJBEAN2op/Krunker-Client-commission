@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars */
 /*
-*   v1.0.2
+*   v1.0.3
 */
 const { app, BrowserWindow, screen, clipboard, dialog, ipcMain, shell, globalShortcut, session } = require('electron');
 const path = require('path');
