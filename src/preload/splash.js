@@ -4,8 +4,9 @@ const { ipcRenderer } = require('electron');
 const version = require('../../package.json').version;
 const tips = [
     'Use F5 to reload your page',
-    'want to switch lobbies faster? hit F6',
-    'Hit F2 to copy the current game link to your clipboard'
+    'Want to switch lobbies faster? hit F4',
+    'Hit F2 to copy the current game link to your clipboard',
+    'Use F11 to toggle fullscreen'
 ];
 
 window.addEventListener('DOMContentLoaded', () => {
