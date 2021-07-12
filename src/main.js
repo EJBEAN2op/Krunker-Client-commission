@@ -1,8 +1,8 @@
 /* eslint-disable no-unused-vars */
 /*
-*   v1.0.3
+*   v1.0.4
 */
-const { app, BrowserWindow, screen, clipboard, dialog, ipcMain, shell, globalShortcut, session } = require('electron');
+const { app, BrowserWindow, screen, clipboard, dialog, shell, globalShortcut, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const krunkerurl = 'https://krunker.io/';
@@ -61,10 +61,6 @@ function createShortcutKeys() {
     shortcuts.register(game, 'Escape', () => contents.executeJavaScript('document.exitPointerLock()', true));
     globalShortcut.register('F5', () => contents.reload()); // reload page
     globalShortcut.register('Shift+F5', () => contents.reloadIgnoringCache());
-    // shortcuts.register();
-    //     if (!game.isFullScreen()) game.setFullScreen(true);
-    //     else game.setFullScreen(false);
-    // });
     globalShortcut.register('F2', () => clipboard.writeText(contents.getURL())); // copy URL to clipboard
     shortcuts.register(game, 'F4', () => game.loadURL(krunkerurl));
     globalShortcut.register('F11', () => game.setSimpleFullScreen(!game.isSimpleFullScreen()));
@@ -132,30 +128,6 @@ function createGameWindow(url, webContents) {
 }
 
 
-function createPromptWindow(message, defaultValue) {
-    const prompt = new BrowserWindow({
-        width: 480,
-        height: 240,
-        center: true,
-        show: true,
-        frame: false,
-        resizable: false,
-        icon: path.join(__dirname, 'assets/icons/png/icon.png'),
-        transparent: true,
-        webPreferences: {
-            preload: `${__dirname}/preload/prompt.js`
-        }
-    });
-    const contents = prompt.webContents;
-
-    prompt.once('ready-to-show', () => contents.send('prompt-data', message, defaultValue));
-
-    prompt.loadFile('src/html/prompt.html');
-
-    return prompt;
-}
-
-
 /**
  * Main function, splash window + game window
  * Auto updated is initiated after splash screen
@@ -163,7 +135,6 @@ function createPromptWindow(message, defaultValue) {
  */
 
 function initClient() { // splash and game
-    load();
     createSplashWindow();
     const wait = ms => new Promise(resolve => setTimeout(resolve, ms));
     autoUpdate(splash.webContents, splash).finally(() => {
@@ -196,28 +167,6 @@ app.on('window-all-closed', () => {
     if (process.platform != 'darwin') app.quit();
 });
 
-function load() {
-    ipcMain.handle('get-app-info', () => ({
-        name: app.name,
-        version: app.getVersion(),
-        documentsDir: app.getPath('documents')
-    }));
-
-    ipcMain.on('get-path', (event, name) => (event.returnValue = app.getPath(name)));
-
-    ipcMain.on('prompt', (event, message, defaultValue) => {
-        const promptWin = createPromptWindow(message, defaultValue);
-        let returnValue = null;
-
-        ipcMain.on('prompt-return', (_, value) => (returnValue = value));
-
-        promptWin.on('closed', () => (event.returnValue = returnValue));
-    });
-
-    ipcMain.handle('set-bounds', (event, bounds) => BrowserWindow
-        .fromWebContents(event.sender)
-        .setBounds(bounds));
-}
 
 function initNewWin(event, url, frameName, disposition, options) {
     if (!url) return;

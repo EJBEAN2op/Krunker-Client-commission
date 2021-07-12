@@ -1,6 +1,6 @@
 {
   "name": "mentos-client",
-  "version": "1.0.2",
+  "version": "1.0.4",
   "description": "A krunker client.",
   "main": "./src/main.js",
   "repository": {
