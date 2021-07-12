@@ -17,10 +17,10 @@
   "author": "EJ BEAN",
   "license": "ISC",
   "devDependencies": {
+    "electron": "^8.5.1",
     "electron-builder": "^22.10.4"
   },
   "dependencies": {
-    "electron": "^8.5.1",
     "electron-localshortcut": "^3.2.1",
     "electron-log": "^4.3.5",
     "electron-store": "^8.0.0",
